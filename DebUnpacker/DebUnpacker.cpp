@@ -16,25 +16,7 @@ bool DebUnpacker::run(std::string input, std::string output)
 {
   std::ifstream f(input, std::ifstream::binary);
 
-  // not good solution...
-  //std::ifstream f(input);
-  //std::istream_iterator<std::string> start(f), end;
-  //std::vector<std::string> data;
-  //std::copy(start, end, std::back_inserter(data));
-
-  // would be better if possible to iterate till desired byte in file
-  //std::istream_iterator<std::string> endPackageSection(start);
-  //std::advance(endPackageSection, 9); // TODO find how to stream part of the file?
-  //std::copy(start, endPackageSection, std::back_inserter(data));
-
-  //bool ok = checkFileFormat(data);
-  bool ok = true;
-
-  // read exact amount of data
-  // not needed
-  //f.seekg(0, f.end);
-  //int length = f.tellg();
-  //f.seekg(0, f.beg);
+  bool ok;
 
   const short archiveSignatureLength = 8;
   std::vector<char> archiveSignature(archiveSignatureLength, 0);
@@ -44,32 +26,18 @@ bool DebUnpacker::run(std::string input, std::string output)
   if (!ok)  return ok;
 
   const short packageSectionLength = 60;
-
-  // avoid char* better to use vector of chars
-  //char packageSection2[packageSectionLength];
-  //std::fill(std::begin(packageSection2), std::end(packageSection2), 0);
-  //f.read(packageSection2, packageSectionLength);
-
   std::vector<char> packageSection(packageSectionLength, 0);
   f.read(&packageSection[0], packageSectionLength);
 
   ok = checkPackageSection(packageSection);
   if (!ok)  return ok;
 
-  // read package file
   std::vector<char> packageFile(packageFileSize, 0);
   f.read(&packageFile[0], packageFileSize);
 
   // todo check version from package file
 
   const short controlSectionLength = 60;
-
-  // avoid char* better to use vector of chars but just to see content
-  //char controlSection2[cotrolSectionLength];
-  //std::fill(std::begin(controlSection2), std::end(controlSection2), 0);
-  //f.read(controlSection2, cotrolSectionLength);
-
-  // read control section
   std::vector<char> controlSection(controlSectionLength, 0);
   f.read(&controlSection[0], controlSectionLength);
 
@@ -80,7 +48,6 @@ bool DebUnpacker::run(std::string input, std::string output)
   std::vector<char> controlFile(controlFileSize, 0);
   f.read(&controlFile[0], controlFileSize);
 
-  // read data section
   const short dataSectionLength = 58;
   std::vector<char> dataSection(dataSectionLength, 0);
   f.read(&dataSection[0], dataSectionLength);
