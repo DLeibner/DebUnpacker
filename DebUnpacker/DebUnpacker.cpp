@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "DebUnpacker.h"
+#include "ZLibDecompressor.h"
 #include <fstream>
 #include <iterator>
-#include <vector>
 #include <algorithm>
 #include <cctype>
 #include <numeric>
@@ -44,9 +44,11 @@ bool DebUnpacker::run(std::string input, std::string output)
   ok = checkControlSection(controlSection);
   if (!ok)  return ok;
 
-  // todo extract control file using zlib
   std::vector<char> controlFile(controlFileSize, 0);
   f.read(&controlFile[0], controlFileSize);
+  // todo extract control file using zlib
+  ZLibDecompressor controlDecompress;
+  std::string controlFileDecompressed = controlDecompress.decompress(controlFile);
 
   const short dataSectionLength = 58;
   std::vector<char> dataSection(dataSectionLength, 0);
@@ -55,9 +57,11 @@ bool DebUnpacker::run(std::string input, std::string output)
   ok = checkDataSection(dataSection);
   if (!ok)  return ok;
 
-  // todo extract data file using zlib
   std::vector<char> dataFile(dataFileSize, 0);
   f.read(&dataFile[0], dataFileSize);
+  // todo extract data file using zlib
+  ZLibDecompressor dataDecompress;
+  std::string dataFileDecompressed = dataDecompress.decompress(dataFile);
 
   return ok;
 }
