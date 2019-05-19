@@ -6,8 +6,9 @@
 #include <algorithm>
 #include <cctype>
 #include <numeric>
+#include <sstream>
 
-DebUnpacker::DebUnpacker() :
+DebUnpacker::DebUnpacker(Environment& env) : env(env),
   packageFileSize(0), controlFileSize(0), dataFileSize(0)
 {
 }
@@ -17,20 +18,25 @@ bool DebUnpacker::run(std::string input, std::string output)
   std::ifstream f(input, std::ifstream::binary);
 
   bool ok;
+  std::stringstream ss;
 
   const short archiveSignatureLength = 8;
   std::vector<char> archiveSignature(archiveSignatureLength, 0);
   f.read(&archiveSignature[0], archiveSignatureLength);
 
+  ss << "Archive file Signature check -> ";
   ok = checkArchiveFileSignature(archiveSignature);
-  if (!ok)  return ok;
+  logStatus(ok, ss);
+  if (!ok) return ok;
 
   const short packageSectionLength = 60;
   std::vector<char> packageSection(packageSectionLength, 0);
   f.read(&packageSection[0], packageSectionLength);
 
+  ss << "Check package section -> ";
   ok = checkPackageSection(packageSection);
-  if (!ok)  return ok;
+  logStatus(ok, ss);
+  if (!ok) return ok;
 
   std::vector<char> packageFile(packageFileSize, 0);
   f.read(&packageFile[0], packageFileSize);
@@ -41,8 +47,10 @@ bool DebUnpacker::run(std::string input, std::string output)
   std::vector<char> controlSection(controlSectionLength, 0);
   f.read(&controlSection[0], controlSectionLength);
 
+  ss << "Check control section -> ";
   ok = checkControlSection(controlSection);
-  if (!ok)  return ok;
+  logStatus(ok, ss);
+  if (!ok) return ok;
 
   std::vector<char> controlFile(controlFileSize, 0);
   f.read(&controlFile[0], controlFileSize);
@@ -54,8 +62,10 @@ bool DebUnpacker::run(std::string input, std::string output)
   std::vector<char> dataSection(dataSectionLength, 0);
   f.read(&dataSection[0], dataSectionLength);
 
+  ss << "Check data section -> ";
   ok = checkDataSection(dataSection);
-  if (!ok)  return ok;
+  logStatus(ok, ss);
+  if (!ok) return ok;
 
   std::vector<char> dataFile(dataFileSize, 0);
   f.read(&dataFile[0], dataFileSize);
@@ -142,4 +152,18 @@ bool DebUnpacker::checkDataSection(const std::vector<char>& section)
   std::tie(ok, dataFileSize) = checkCommonBytes(section, identifier);
 
   return ok;
+}
+
+void DebUnpacker::logStatus(bool ok, std::stringstream& ss)
+{
+  if (ok)
+  {
+    ss << "OK";
+    env.Trace(Environment::TraceLevel::Info, ss);
+  }
+  else
+  {
+    ss << "FAILED!";
+    env.Trace(Environment::TraceLevel::Error, ss);
+  }
 }

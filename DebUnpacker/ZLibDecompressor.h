@@ -1,7 +1,8 @@
 #pragma once
 #include <string>
 #include <vector>
-#include "../zlib-1.2.11/zlib.h"
+//#include "../zlib-1.2.11/zlib.h"
+#include "../zlib/include/zlib/zlib.h"
 
 class ZLibDecompressor
 {
