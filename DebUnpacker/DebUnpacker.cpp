@@ -58,7 +58,7 @@ bool DebUnpacker::run(std::string input, std::string output)
   ZLibDecompressor controlDecompress;
   std::string controlFileDecompressed = controlDecompress.decompress(controlFile);
 
-  const short dataSectionLength = 58;
+  const short dataSectionLength = 60;
   std::vector<char> dataSection(dataSectionLength, 0);
   f.read(&dataSection[0], dataSectionLength);
 
@@ -77,12 +77,22 @@ bool DebUnpacker::run(std::string input, std::string output)
 }
 
 std::pair<bool, unsigned int> DebUnpacker::checkCommonBytes(
-  const std::vector<char>& section, const std::string& identifier)
+  const std::vector<char>& section, const std::vector<std::string>& identifier)
 {
   unsigned int size = 0;
 
-  // file identifider
-  if (!std::equal(section.cbegin(), section.cbegin() + 16, std::cbegin(identifier)))
+  // file identifier
+  bool identOk = false;
+  for (auto&& i: identifier)
+  {
+    if (std::equal(section.cbegin(), section.cbegin() + 16, std::cbegin(i)))
+    {
+      identOk = true;
+      break;
+    }
+  }
+
+  if (!identOk)
     return std::make_pair(false, size);
 
   auto isDigitOrEmpty = [](unsigned char x) { return std::isdigit(x) || x == ' '; };
@@ -128,7 +138,7 @@ bool DebUnpacker::checkArchiveFileSignature(const std::vector<char>& section)
 bool DebUnpacker::checkPackageSection(const std::vector<char>& section)
 {
   bool ok;
-  std::string identifier = "debian-binary   ";
+  std::vector<std::string> identifier{ "debian-binary   " };
   std::tie(ok, packageFileSize) = checkCommonBytes(section, identifier);
 
   return ok;
@@ -137,8 +147,7 @@ bool DebUnpacker::checkPackageSection(const std::vector<char>& section)
 bool DebUnpacker::checkControlSection(const std::vector<char>& section)
 {
   bool ok;
-  std::string identifier = "control.tar.gz  ";
-
+  std::vector<std::string> identifier{ "control.tar.gz  ", "control.tar.xz  " };
   std::tie(ok, controlFileSize) = checkCommonBytes(section, identifier);
 
   return ok;
@@ -147,8 +156,7 @@ bool DebUnpacker::checkControlSection(const std::vector<char>& section)
 bool DebUnpacker::checkDataSection(const std::vector<char>& section)
 {
   bool ok;
-  std::string identifier = "data.tar.gz     ";
-
+  std::vector<std::string> identifier{ "data.tar.gz     ", "data.tar.bz2    ", "data.tar.7z     ", "data.tar.xz     " };
   std::tie(ok, dataFileSize) = checkCommonBytes(section, identifier);
 
   return ok;

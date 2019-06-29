@@ -16,7 +16,7 @@ private:
   unsigned int controlFileSize;
   unsigned int dataFileSize;
 
-  std::pair<bool, unsigned int> checkCommonBytes(const std::vector<char>& section, const std::string& identifier);
+  std::pair<bool, unsigned int> checkCommonBytes(const std::vector<char>& section, const std::vector<std::string>& identifier);
   bool checkArchiveFileSignature(const std::vector<char>& section);
   bool checkPackageSection(const std::vector<char>& section);
   bool checkControlSection(const std::vector<char>& section);
