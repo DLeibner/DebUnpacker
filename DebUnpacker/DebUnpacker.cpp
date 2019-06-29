@@ -1,12 +1,12 @@
 #include "pch.h"
-#include "DebUnpacker.h"
-#include "ZLibDecompressor.h"
 #include <fstream>
 #include <iterator>
 #include <algorithm>
 #include <cctype>
 #include <numeric>
 #include <sstream>
+#include "DebUnpacker.h"
+#include "ZLibDecompressor.h"
 
 DebUnpacker::DebUnpacker(Environment& env) : env(env),
   packageFileSize(0), controlFileSize(0), dataFileSize(0)
@@ -55,8 +55,17 @@ bool DebUnpacker::run(std::string input, std::string output)
   std::vector<char> controlFile(controlFileSize, 0);
   f.read(&controlFile[0], controlFileSize);
   // todo extract control file using zlib
-  ZLibDecompressor controlDecompress;
-  std::string controlFileDecompressed = controlDecompress.decompress(controlFile);
+  ZLibDecompressor zlibDecompress;
+  try
+  {
+    std::string controlFileDecompressed = zlibDecompress.decompress(controlFile);
+  }
+  catch (std::exception& e)
+  {
+    ss << "Error in decompressing Control File: " << e.what();
+    env.Trace(Environment::TraceLevel::Error, ss);
+    return false;
+  }
 
   const short dataSectionLength = 60;
   std::vector<char> dataSection(dataSectionLength, 0);
@@ -70,8 +79,16 @@ bool DebUnpacker::run(std::string input, std::string output)
   std::vector<char> dataFile(dataFileSize, 0);
   f.read(&dataFile[0], dataFileSize);
   // todo extract data file using zlib
-  ZLibDecompressor dataDecompress;
-  std::string dataFileDecompressed = dataDecompress.decompress(dataFile);
+  try
+  {
+    std::string dataFileDecompressed = zlibDecompress.decompress(dataFile);
+  }
+  catch (std::exception& e)
+  {
+    ss << "Error in decompressing Data File: " << e.what();
+    env.Trace(Environment::TraceLevel::Error, ss);
+    return false;
+  }
 
   return ok;
 }
@@ -147,7 +164,7 @@ bool DebUnpacker::checkPackageSection(const std::vector<char>& section)
 bool DebUnpacker::checkControlSection(const std::vector<char>& section)
 {
   bool ok;
-  std::vector<std::string> identifier{ "control.tar.gz  ", "control.tar.xz  " };
+  std::vector<std::string> identifier{ "control.tar.gz  ", "control.tgz     ", "control.tar.xz  " };
   std::tie(ok, controlFileSize) = checkCommonBytes(section, identifier);
 
   return ok;

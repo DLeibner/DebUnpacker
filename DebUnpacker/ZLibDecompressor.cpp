@@ -10,7 +10,7 @@ ZLibDecompressor::ZLibDecompressor()
   strm.opaque = nullptr;
   strm.avail_in = 0;
   strm.next_in = nullptr;
-  const int ret = inflateInit(&strm);
+  const int ret = inflateInit2(&strm, 16 + MAX_WBITS);
   if (ret != Z_OK)
     throw std::bad_alloc();
 }
@@ -28,7 +28,7 @@ std::string ZLibDecompressor::decompress(const std::vector<char>& input)
   {
     int left = input.size() - i;
     int size = left > chunk ? chunk : left;
-    std::copy(input.begin() + i, input.begin() + size, in);
+    std::copy(input.begin() + i, input.begin() + i + size, in);
 
     strm.avail_in = size;
     strm.next_in = reinterpret_cast<unsigned char*>(in);
@@ -37,11 +37,29 @@ std::string ZLibDecompressor::decompress(const std::vector<char>& input)
     {
       strm.avail_out = chunk;
       strm.next_out = reinterpret_cast<unsigned char*>(out);
+
       int ret = inflate(&strm, Z_NO_FLUSH);
       if (ret == Z_STREAM_ERROR)
-        throw std::bad_alloc();
+      {
+        inflateEnd(&strm);
+        throw std::runtime_error("Z_STREAM_ERROR (-2)");
+      }
+      switch (ret)
+      {
+      case Z_NEED_DICT:
+        inflateEnd(&strm);
+        throw std::runtime_error("Z_NEED_DICT (2)");
+      case Z_DATA_ERROR:
+        inflateEnd(&strm);
+        throw std::runtime_error("Z_DATA_ERROR (-3)");
+      case Z_MEM_ERROR:
+        inflateEnd(&strm);
+        throw std::runtime_error("Z_MEM_ERROR (-4)");
+      }
+
       int have = chunk - strm.avail_out;
-      res += std::string(out, have);
+      std::string temp = std::string(out, have);
+      res.append(temp.begin(), temp.end());
     } while (strm.avail_out == 0);
   }
 
