@@ -3,6 +3,7 @@
 #include <vector>
 #include <tuple>
 #include "Environment.h"
+#include "ZLibDecompressor.h"
 
 class DebUnpacker
 {
@@ -13,6 +14,7 @@ public:
 
 private:
   Environment& env;
+  ZLibDecompressor zlibDecompress;
   unsigned int packageFileSize;
   unsigned int controlFileSize;
   unsigned int dataFileSize;
@@ -24,6 +26,8 @@ private:
   bool checkPackageSection(const std::vector<char>& section);
   bool checkControlSection(const std::vector<char>& section);
   bool checkDataSection(const std::vector<char>& section);
+
+  bool extractFile(std::ifstream& input, unsigned int size, bool inflate, std::ofstream& output);
 
   void logStatus(bool ok, std::stringstream& ss);
 };

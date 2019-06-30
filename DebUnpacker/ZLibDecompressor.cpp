@@ -21,13 +21,9 @@ ZLibDecompressor::~ZLibDecompressor()
   inflateEnd(&strm);
 }
 
-std::optional<std::string> ZLibDecompressor::decompress(const std::string& input_file, int from, int to, const std::string& output_file)
+std::optional<std::string> ZLibDecompressor::decompress(std::ifstream& input, int from, int to, std::ofstream& output)
 {
   int ret = 0;
-  std::ifstream input(input_file, std::ios::in | std::ios::binary);
-  std::ofstream output(output_file, std::ios::out | std::ios::binary | std::ios::trunc);
-
-  input.seekg(from);
 
   do
   {
@@ -76,4 +72,16 @@ std::optional<std::string> ZLibDecompressor::decompress(const std::string& input
 
   inflateEnd(&strm);
   return std::nullopt;
+}
+
+void ZLibDecompressor::extractWithoutInflate(std::ifstream& input, int from, int to, std::ofstream& output)
+{
+  while (from != to)
+  {
+    auto size = to - from > CHUNK ? CHUNK : to - from;
+    from += size;
+
+    input.read(in, size);
+    output.write(in, size);
+  }
 }

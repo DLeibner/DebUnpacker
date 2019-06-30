@@ -10,7 +10,8 @@ public:
   ZLibDecompressor();
   ~ZLibDecompressor();
 
-  std::optional<std::string> decompress(const std::string& input, int from, int to, const std::string& output);
+  std::optional<std::string> decompress(std::ifstream& input, int from, int to, std::ofstream& output);
+  void extractWithoutInflate(std::ifstream& input, int from, int to, std::ofstream& output);
 
 protected:
   static constexpr size_t CHUNK = 262144;

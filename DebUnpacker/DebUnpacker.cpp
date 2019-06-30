@@ -13,16 +13,17 @@ DebUnpacker::DebUnpacker(Environment& env) : env(env),
 {
 }
 
-bool DebUnpacker::run(std::string input, std::string output)
+bool DebUnpacker::run(std::string inputFilePath, std::string outputFilePath)
 {
-  std::ifstream f(input, std::ifstream::binary);
+  std::ifstream input(inputFilePath, std::ifstream::binary);
+  std::ofstream output(outputFilePath, std::ofstream::binary);
 
   bool ok;
   std::stringstream ss;
 
   const short archiveSignatureLength = 8;
   std::vector<char> archiveSignature(archiveSignatureLength, 0);
-  f.read(&archiveSignature[0], archiveSignatureLength);
+  input.read(&archiveSignature[0], archiveSignatureLength);
 
   ss << "Archive file Signature check -> ";
   ok = checkArchiveFileSignature(archiveSignature);
@@ -31,7 +32,7 @@ bool DebUnpacker::run(std::string input, std::string output)
 
   const short packageSectionLength = 60;
   std::vector<char> packageSection(packageSectionLength, 0);
-  f.read(&packageSection[0], packageSectionLength);
+  input.read(&packageSection[0], packageSectionLength);
 
   ss << "Check package section -> ";
   ok = checkPackageSection(packageSection);
@@ -39,27 +40,28 @@ bool DebUnpacker::run(std::string input, std::string output)
   if (!ok) return ok;
 
   std::vector<char> packageFile(packageFileSize, 0);
-  f.read(&packageFile[0], packageFileSize);
+  input.read(&packageFile[0], packageFileSize);
 
   // todo check version from package file
 
   const short controlSectionLength = 60;
   std::vector<char> controlSection(controlSectionLength, 0);
-  f.read(&controlSection[0], controlSectionLength);
+  input.read(&controlSection[0], controlSectionLength);
 
   ss << "Check control section -> ";
   ok = checkControlSection(controlSection);
   logStatus(ok, ss);
   if (!ok) return ok;
 
-  // don't read, just move current position by control file size
-  int from = f.tellg();
-  f.seekg(controlFileSize, f.cur);
-  int to = f.tellg();
+  int from = input.tellg();
+  int to = from + controlFileSize;
 
   // extract control file using zlib
-  ZLibDecompressor zlibDecompress;
-  if (auto ret = zlibDecompress.decompress(input, from, to, output))
+  if (!controlFileInflate)
+  {
+    zlibDecompress.extractWithoutInflate(input, from, to, output);
+  }
+  else if (auto ret = zlibDecompress.decompress(input, from, to, output))
   {
     ss << "Error in decompressing Control File: " << *ret;
     env.Trace(Environment::TraceLevel::Error, ss);
@@ -68,19 +70,21 @@ bool DebUnpacker::run(std::string input, std::string output)
 
   const short dataSectionLength = 60;
   std::vector<char> dataSection(dataSectionLength, 0);
-  f.read(&dataSection[0], dataSectionLength);
+  input.read(&dataSection[0], dataSectionLength);
 
   ss << "Check data section -> ";
   ok = checkDataSection(dataSection);
   logStatus(ok, ss);
   if (!ok) return ok;
 
-  // don't read, just move current position by data file size
-  from = f.tellg();
-  f.seekg(dataFileSize, f.cur);
-  to = f.tellg();
+  from = input.tellg();
+  to = from + dataFileSize;
 
-  if (auto ret = zlibDecompress.decompress(input, from, to, output))
+  if (!dataFileInflate)
+  {
+    zlibDecompress.extractWithoutInflate(input, from, to, output);
+  }
+  else if(auto ret = zlibDecompress.decompress(input, from, to, output))
   {
     ss << "Error in decompressing Data File: " << *ret;
     env.Trace(Environment::TraceLevel::Error, ss);
