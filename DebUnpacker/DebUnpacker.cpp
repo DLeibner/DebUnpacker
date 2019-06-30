@@ -9,89 +9,76 @@
 #include "ZLibDecompressor.h"
 
 DebUnpacker::DebUnpacker(Environment& env) : env(env),
-  packageFileSize(0), controlFileSize(0), dataFileSize(0)
+  packageFileSize(0), controlFileSize(0), dataFileSize(0),
+  packageFileInflate(false), controlFileInflate(false), dataFileInflate(false)
 {
 }
 
-bool DebUnpacker::run(std::string inputFilePath, std::string outputFilePath)
+bool DebUnpacker::run(const std::string& inputFilePath, const std::string& outputFilePath)
 {
   std::ifstream input(inputFilePath, std::ifstream::binary);
   std::ofstream output(outputFilePath, std::ofstream::binary);
 
-  bool ok;
+  if (!checkArchiveFileSignature(input))
+    return false;
+
+  std::vector<std::string> packageIdentifier{ "debian-binary   " };
+  if (!checkSection(input, packageFileSize, packageFileInflate, packageIdentifier, "Package"))
+    return false;
+
+  if (!extractFile(input, packageFileSize, packageFileInflate, output))
+    return false;
+
+  std::vector<std::string> controlIdentifier{ "control.tar.gz  ", "control.tgz     ", "control.tar.xz  " };
+  if (!checkSection(input, controlFileSize, controlFileInflate, controlIdentifier, "Control"))
+    return false;
+
+  if (!extractFile(input, controlFileSize, controlFileInflate, output))
+    return false;
+
+  std::vector<std::string> dataIdentifier{ "data.tar.gz     ", "data.tgz        ", "data.tar.bz2    ", "data.tar.7z     ", "data.tar.xz     " };
+  if (!checkSection(input, dataFileSize, dataFileInflate, dataIdentifier, "Data"))
+    return false;
+
+  if (!extractFile(input, dataFileSize, dataFileInflate, output))
+    return false;
+
+  return true;
+}
+
+bool DebUnpacker::checkSection(std::ifstream& input, unsigned int& fileSize, bool& inflate, const std::vector<std::string>& identifier, const std::string& sectionName)
+{
+  std::vector<char> section(sectionLength, 0);
+  input.read(&section[0], sectionLength);
+
   std::stringstream ss;
+  ss << "Check " << sectionName << " section -> ";
 
-  const short archiveSignatureLength = 8;
-  std::vector<char> archiveSignature(archiveSignatureLength, 0);
-  input.read(&archiveSignature[0], archiveSignatureLength);
-
-  ss << "Archive file Signature check -> ";
-  ok = checkArchiveFileSignature(archiveSignature);
+  bool ok;
+  std::tie(ok, fileSize, inflate) = checkCommonBytes(section, identifier);
   logStatus(ok, ss);
-  if (!ok) return ok;
 
-  const short packageSectionLength = 60;
-  std::vector<char> packageSection(packageSectionLength, 0);
-  input.read(&packageSection[0], packageSectionLength);
+  return ok;
+}
 
-  ss << "Check package section -> ";
-  ok = checkPackageSection(packageSection);
-  logStatus(ok, ss);
-  if (!ok) return ok;
+bool DebUnpacker::extractFile(std::ifstream& input, unsigned int size, bool inflate, std::ofstream& output)
+{
+  int from = static_cast<int>(input.tellg());
+  int to = from + size;
 
-  std::vector<char> packageFile(packageFileSize, 0);
-  input.read(&packageFile[0], packageFileSize);
-
-  // todo check version from package file
-
-  const short controlSectionLength = 60;
-  std::vector<char> controlSection(controlSectionLength, 0);
-  input.read(&controlSection[0], controlSectionLength);
-
-  ss << "Check control section -> ";
-  ok = checkControlSection(controlSection);
-  logStatus(ok, ss);
-  if (!ok) return ok;
-
-  int from = input.tellg();
-  int to = from + controlFileSize;
-
-  // extract control file using zlib
-  if (!controlFileInflate)
+  if (!inflate)
   {
     zlibDecompress.extractWithoutInflate(input, from, to, output);
   }
   else if (auto ret = zlibDecompress.decompress(input, from, to, output))
   {
-    ss << "Error in decompressing Control File: " << *ret;
+    std::stringstream ss;
+    ss << "Error in decompressing: " << *ret;
     env.Trace(Environment::TraceLevel::Error, ss);
     return false;
   }
 
-  const short dataSectionLength = 60;
-  std::vector<char> dataSection(dataSectionLength, 0);
-  input.read(&dataSection[0], dataSectionLength);
-
-  ss << "Check data section -> ";
-  ok = checkDataSection(dataSection);
-  logStatus(ok, ss);
-  if (!ok) return ok;
-
-  from = input.tellg();
-  to = from + dataFileSize;
-
-  if (!dataFileInflate)
-  {
-    zlibDecompress.extractWithoutInflate(input, from, to, output);
-  }
-  else if(auto ret = zlibDecompress.decompress(input, from, to, output))
-  {
-    ss << "Error in decompressing Data File: " << *ret;
-    env.Trace(Environment::TraceLevel::Error, ss);
-    return false;
-  }
-
-  return ok;
+  return true;
 }
 
 std::tuple<bool, unsigned int, bool> DebUnpacker::checkCommonBytes(
@@ -148,40 +135,20 @@ std::tuple<bool, unsigned int, bool> DebUnpacker::checkCommonBytes(
   return std::make_tuple(true, size, inflate);
 }
 
-bool DebUnpacker::checkArchiveFileSignature(const std::vector<char>& section)
+bool DebUnpacker::checkArchiveFileSignature(std::ifstream& input)
 {
-  // archive file signature
+  bool ok = true;
+  std::stringstream ss;
+  const short archiveSignatureLength = 8;
+  std::vector<char> archiveSignature(archiveSignatureLength, 0);
+  input.read(&archiveSignature[0], archiveSignatureLength);
+
+  ss << "Archive file Signature check -> ";
   std::string archive = "!<arch>\n";
-  if (!std::equal(section.cbegin(), section.cbegin() + 8, std::cbegin(archive)))
-    return false;
+  if (!std::equal(archiveSignature.cbegin(), archiveSignature.cbegin() + 8, std::cbegin(archive)))
+    ok = false;
 
-  return true;
-}
-
-bool DebUnpacker::checkPackageSection(const std::vector<char>& section)
-{
-  bool ok;
-  std::vector<std::string> identifier{ "debian-binary   " };
-  std::tie(ok, packageFileSize, std::ignore) = checkCommonBytes(section, identifier);
-
-  return ok;
-}
-
-bool DebUnpacker::checkControlSection(const std::vector<char>& section)
-{
-  bool ok;
-  std::vector<std::string> identifier{ "control.tar.gz  ", "control.tgz     ", "control.tar.xz  " };
-  std::tie(ok, controlFileSize, controlFileInflate) = checkCommonBytes(section, identifier);
-
-  return ok;
-}
-
-bool DebUnpacker::checkDataSection(const std::vector<char>& section)
-{
-  bool ok;
-  std::vector<std::string> identifier{ "data.tar.gz     ", "data.tgz        ", "data.tar.bz2    ", "data.tar.7z     ", "data.tar.xz     " };
-  std::tie(ok, dataFileSize, dataFileInflate) = checkCommonBytes(section, identifier);
-
+  logStatus(ok, ss);
   return ok;
 }
 
