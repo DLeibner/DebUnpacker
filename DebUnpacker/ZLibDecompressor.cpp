@@ -74,7 +74,7 @@ std::optional<std::string> ZLibDecompressor::decompress(std::ifstream& input, in
   return std::nullopt;
 }
 
-void ZLibDecompressor::extractWithoutInflate(std::ifstream& input, int from, int to, std::ofstream& output)
+void ZLibDecompressor::extractWithoutInflate(std::ifstream& input, int from, const int to, std::ofstream& output)
 {
   while (from != to)
   {
