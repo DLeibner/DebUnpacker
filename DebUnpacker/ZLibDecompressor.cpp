@@ -20,9 +20,15 @@ ZLibDecompressor::~ZLibDecompressor()
   inflateEnd(&strm);
 }
 
-std::optional<std::string> ZLibDecompressor::decompress(std::ifstream& input, int from, const int to, std::ofstream& output)
+std::optional<std::string> ZLibDecompressor::decompress(std::ifstream& input, int from, const int to, const std::string& outputPath)
 {
   int ret;
+  std::ofstream output(outputPath, std::ios::out | std::ios::binary | std::ios::trunc);
+
+  if (!output)
+  {
+    return "Failed to open file on path " + outputPath;
+  }
 
   do
   {
@@ -74,8 +80,15 @@ std::optional<std::string> ZLibDecompressor::decompress(std::ifstream& input, in
   return std::nullopt;
 }
 
-void ZLibDecompressor::extractWithoutInflate(std::ifstream& input, int from, const int to, std::ofstream& output)
+std::optional<std::string> ZLibDecompressor::extractWithoutInflate(std::ifstream& input, int from, const int to, const std::string& outputPath)
 {
+  std::ofstream output(outputPath, std::ios::out | std::ios::binary | std::ios::trunc);
+
+  if (!output)
+  {
+    return "Failed to open file on path " + outputPath;
+  }
+
   while (from != to)
   {
     const auto size = to - from > chunk ? chunk : to - from;
@@ -84,4 +97,6 @@ void ZLibDecompressor::extractWithoutInflate(std::ifstream& input, int from, con
     input.read(in, size);
     output.write(in, size);
   }
+
+  return std::nullopt;
 }

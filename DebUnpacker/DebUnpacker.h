@@ -10,7 +10,7 @@ class DebUnpacker
 public:
   DebUnpacker(Environment& env);
 
-  bool run(const std::string& inputFilePath, const std::string& outputFilePath);
+  bool run(const std::string& inputFilePath, const std::string& outputFolderPath);
 
 private:
   Environment& env;
@@ -26,7 +26,7 @@ private:
   std::tuple<bool, unsigned int, bool> checkCommonBytes(const std::vector<char>& section, const std::vector<std::string>& identifier) const;
   bool checkArchiveFileSignature(std::ifstream& input) const;
   bool checkSection(std::ifstream& input, unsigned int& fileSize, bool& inflate, const std::vector<std::string>& identifier, const std::string& sectionName) const;
-  bool extractFile(std::ifstream& input, unsigned int size, bool inflate, std::ofstream& output);
+  bool extractFile(std::ifstream& input, unsigned int size, bool inflate, const std::string& outputPath);
 
   void logStatus(bool ok, std::stringstream& ss) const;
 };

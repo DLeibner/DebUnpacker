@@ -9,8 +9,8 @@ public:
   ZLibDecompressor();
   ~ZLibDecompressor();
 
-  std::optional<std::string> decompress(std::ifstream& input, int from, int to, std::ofstream& output);
-  void extractWithoutInflate(std::ifstream& input, int from, int to, std::ofstream& output);
+  std::optional<std::string> decompress(std::ifstream& input, int from, int to, const std::string& outputPath);
+  std::optional<std::string> extractWithoutInflate(std::ifstream& input, int from, int to, const std::string& outputPath);
 
 protected:
   static constexpr size_t chunk = 262144;

@@ -14,10 +14,9 @@ DebUnpacker::DebUnpacker(Environment& env) : env(env),
 {
 }
 
-bool DebUnpacker::run(const std::string& inputFilePath, const std::string& outputFilePath)
+bool DebUnpacker::run(const std::string& inputFilePath, const std::string& outputFolderPath)
 {
-  std::ifstream input(inputFilePath, std::ifstream::binary);
-  std::ofstream output(outputFilePath, std::ofstream::binary);
+  std::ifstream input(inputFilePath, std::ios::in | std::ios::binary);
 
   if (!checkArchiveFileSignature(input))
     return false;
@@ -26,21 +25,21 @@ bool DebUnpacker::run(const std::string& inputFilePath, const std::string& outpu
   if (!checkSection(input, packageFileSize, packageFileInflate, packageIdentifier, "Package"))
     return false;
 
-  if (!extractFile(input, packageFileSize, packageFileInflate, output))
+  if (!extractFile(input, packageFileSize, packageFileInflate, outputFolderPath + "\\PackageFile"))
     return false;
 
   std::vector<std::string> controlIdentifier{ "control.tar.gz  ", "control.tgz     ", "control.tar.xz  " };
   if (!checkSection(input, controlFileSize, controlFileInflate, controlIdentifier, "Control"))
     return false;
 
-  if (!extractFile(input, controlFileSize, controlFileInflate, output))
+  if (!extractFile(input, controlFileSize, controlFileInflate, outputFolderPath + "\\ControlFile"))
     return false;
 
   std::vector<std::string> dataIdentifier{ "data.tar.gz     ", "data.tgz        ", "data.tar.bz2    ", "data.tar.7z     ", "data.tar.xz     " };
   if (!checkSection(input, dataFileSize, dataFileInflate, dataIdentifier, "Data"))
     return false;
 
-  if (!extractFile(input, dataFileSize, dataFileInflate, output))
+  if (!extractFile(input, dataFileSize, dataFileInflate, outputFolderPath + "\\DataFile"))
     return false;
 
   return true;
@@ -61,16 +60,16 @@ bool DebUnpacker::checkSection(std::ifstream& input, unsigned int& fileSize, boo
   return ok;
 }
 
-bool DebUnpacker::extractFile(std::ifstream& input, unsigned int size, bool inflate, std::ofstream& output)
+bool DebUnpacker::extractFile(std::ifstream& input, unsigned int size, bool inflate, const std::string& outputPath)
 {
   const int from = static_cast<int>(input.tellg());
   const int to = from + size;
 
   if (!inflate)
   {
-    zlibDecompress.extractWithoutInflate(input, from, to, output);
+    zlibDecompress.extractWithoutInflate(input, from, to, outputPath);
   }
-  else if (auto ret = zlibDecompress.decompress(input, from, to, output))
+  else if (auto ret = zlibDecompress.decompress(input, from, to, outputPath))
   {
     std::stringstream ss;
     ss << "Error in decompressing: " << *ret;
