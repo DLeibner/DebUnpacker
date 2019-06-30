@@ -90,10 +90,11 @@ bool DebUnpacker::run(std::string input, std::string output)
   return ok;
 }
 
-std::pair<bool, unsigned int> DebUnpacker::checkCommonBytes(
+std::tuple<bool, unsigned int, bool> DebUnpacker::checkCommonBytes(
   const std::vector<char>& section, const std::vector<std::string>& identifier)
 {
   unsigned int size = 0;
+  bool inflate = false;
 
   // file identifier
   bool identOk = false;
@@ -102,30 +103,34 @@ std::pair<bool, unsigned int> DebUnpacker::checkCommonBytes(
     if (std::equal(section.cbegin(), section.cbegin() + 16, std::cbegin(i)))
     {
       identOk = true;
+      if (i.find(".tar.gz") != std::string::npos || i.find(".tgz") != std::string::npos)
+      {
+        inflate = true;
+      }
       break;
     }
   }
 
   if (!identOk)
-    return std::make_pair(false, size);
+    return std::make_tuple(false, size, inflate);
 
   auto isDigitOrEmpty = [](unsigned char x) { return std::isdigit(x) || x == ' '; };
 
   // file modification timestamp
   if (!std::all_of(section.cbegin() + 16, section.cbegin() + 28, isDigitOrEmpty))
-    return std::make_pair(false, size);
+    return std::make_tuple(false, size, inflate);
 
   // owner ID
   if (!std::all_of(section.cbegin() + 28, section.cbegin() + 34, isDigitOrEmpty))
-    return std::make_pair(false, size);
+    return std::make_tuple(false, size, inflate);
 
   // group ID
   if (!std::all_of(section.cbegin() + 34, section.cbegin() + 40, isDigitOrEmpty))
-    return std::make_pair(false, size);
+    return std::make_tuple(false, size, inflate);
 
   // file mode
   if (!std::all_of(section.cbegin() + 40, section.cbegin() + 48, isDigitOrEmpty))
-    return std::make_pair(false, size);
+    return std::make_tuple(false, size, inflate);
 
   // file size in bytes (decimal)
   size = std::accumulate(section.cbegin() + 48, section.cbegin() + 58, 0,
@@ -134,9 +139,9 @@ std::pair<bool, unsigned int> DebUnpacker::checkCommonBytes(
   // end char
   std::string end = "`\n";
   if (!std::equal(section.cbegin() + 58, section.cbegin() + 60, std::cbegin(end)))
-    return std::make_pair(false, size);
+    return std::make_tuple(false, size, inflate);
 
-  return std::make_pair(true, size);
+  return std::make_tuple(true, size, inflate);
 }
 
 bool DebUnpacker::checkArchiveFileSignature(const std::vector<char>& section)
@@ -153,7 +158,7 @@ bool DebUnpacker::checkPackageSection(const std::vector<char>& section)
 {
   bool ok;
   std::vector<std::string> identifier{ "debian-binary   " };
-  std::tie(ok, packageFileSize) = checkCommonBytes(section, identifier);
+  std::tie(ok, packageFileSize, std::ignore) = checkCommonBytes(section, identifier);
 
   return ok;
 }
@@ -162,7 +167,7 @@ bool DebUnpacker::checkControlSection(const std::vector<char>& section)
 {
   bool ok;
   std::vector<std::string> identifier{ "control.tar.gz  ", "control.tgz     ", "control.tar.xz  " };
-  std::tie(ok, controlFileSize) = checkCommonBytes(section, identifier);
+  std::tie(ok, controlFileSize, controlFileInflate) = checkCommonBytes(section, identifier);
 
   return ok;
 }
@@ -170,8 +175,8 @@ bool DebUnpacker::checkControlSection(const std::vector<char>& section)
 bool DebUnpacker::checkDataSection(const std::vector<char>& section)
 {
   bool ok;
-  std::vector<std::string> identifier{ "data.tar.gz     ", "data.tar.bz2    ", "data.tar.7z     ", "data.tar.xz     " };
-  std::tie(ok, dataFileSize) = checkCommonBytes(section, identifier);
+  std::vector<std::string> identifier{ "data.tar.gz     ", "data.tgz        ", "data.tar.bz2    ", "data.tar.7z     ", "data.tar.xz     " };
+  std::tie(ok, dataFileSize, dataFileInflate) = checkCommonBytes(section, identifier);
 
   return ok;
 }

@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <tuple>
 #include "Environment.h"
 
 class DebUnpacker
@@ -15,8 +16,10 @@ private:
   unsigned int packageFileSize;
   unsigned int controlFileSize;
   unsigned int dataFileSize;
+  bool controlFileInflate;
+  bool dataFileInflate;
 
-  std::pair<bool, unsigned int> checkCommonBytes(const std::vector<char>& section, const std::vector<std::string>& identifier);
+  std::tuple<bool, unsigned int, bool> checkCommonBytes(const std::vector<char>& section, const std::vector<std::string>& identifier);
   bool checkArchiveFileSignature(const std::vector<char>& section);
   bool checkPackageSection(const std::vector<char>& section);
   bool checkControlSection(const std::vector<char>& section);
