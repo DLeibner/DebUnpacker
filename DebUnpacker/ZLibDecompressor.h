@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
-//#include "../zlib-1.2.11/zlib.h"
+#include <optional>
 #include "../zlib/include/zlib/zlib.h"
 
 class ZLibDecompressor
@@ -10,14 +10,14 @@ public:
   ZLibDecompressor();
   ~ZLibDecompressor();
 
-  std::string decompress(const std::vector<char>& input);
+  std::optional<std::string> decompress(const std::string& input, int from, int to, const std::string& output);
 
 protected:
-  static const unsigned int chunk = 16384;
+  static constexpr size_t CHUNK = 262144;
 
 private:
-  char in[chunk];
-  char out[chunk];
+  char in[CHUNK];
+  char out[CHUNK];
   z_stream strm;
 };
 

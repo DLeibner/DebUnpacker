@@ -52,17 +52,16 @@ bool DebUnpacker::run(std::string input, std::string output)
   logStatus(ok, ss);
   if (!ok) return ok;
 
-  std::vector<char> controlFile(controlFileSize, 0);
-  f.read(&controlFile[0], controlFileSize);
-  // todo extract control file using zlib
+  // don't read, just move current position by control file size
+  int from = f.tellg();
+  f.seekg(controlFileSize, f.cur);
+  int to = f.tellg();
+
+  // extract control file using zlib
   ZLibDecompressor zlibDecompress;
-  try
+  if (auto ret = zlibDecompress.decompress(input, from, to, output))
   {
-    std::string controlFileDecompressed = zlibDecompress.decompress(controlFile);
-  }
-  catch (std::exception& e)
-  {
-    ss << "Error in decompressing Control File: " << e.what();
+    ss << "Error in decompressing Control File: " << *ret;
     env.Trace(Environment::TraceLevel::Error, ss);
     return false;
   }
@@ -76,16 +75,14 @@ bool DebUnpacker::run(std::string input, std::string output)
   logStatus(ok, ss);
   if (!ok) return ok;
 
-  std::vector<char> dataFile(dataFileSize, 0);
-  f.read(&dataFile[0], dataFileSize);
-  // todo extract data file using zlib
-  try
+  // don't read, just move current position by data file size
+  from = f.tellg();
+  f.seekg(dataFileSize, f.cur);
+  to = f.tellg();
+
+  if (auto ret = zlibDecompress.decompress(input, from, to, output))
   {
-    std::string dataFileDecompressed = zlibDecompress.decompress(dataFile);
-  }
-  catch (std::exception& e)
-  {
-    ss << "Error in decompressing Data File: " << e.what();
+    ss << "Error in decompressing Data File: " << *ret;
     env.Trace(Environment::TraceLevel::Error, ss);
     return false;
   }
