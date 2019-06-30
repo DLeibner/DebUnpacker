@@ -14,11 +14,11 @@ public:
   void extractWithoutInflate(std::ifstream& input, int from, int to, std::ofstream& output);
 
 protected:
-  static constexpr size_t CHUNK = 262144;
+  static constexpr size_t chunk = 262144;
 
 private:
-  char in[CHUNK];
-  char out[CHUNK];
+  char in[chunk];
+  char out[chunk];
   z_stream strm;
 };
 

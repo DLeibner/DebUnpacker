@@ -3,6 +3,8 @@
 class Environment
 {
 public:
+  virtual ~Environment() = default;
+
   /// trace levels
   enum class TraceLevel
   {
@@ -13,10 +15,10 @@ public:
   };
 
   std::map<TraceLevel, std::string> traceLevels = {
-    {Environment::TraceLevel::Error, "Error: "},
-    {Environment::TraceLevel::Warning, "Warning: "},
-    {Environment::TraceLevel::Info, "Info: "},
-    {Environment::TraceLevel::Debug, "Debug: "}
+    {TraceLevel::Error, "Error: "},
+    {TraceLevel::Warning, "Warning: "},
+    {TraceLevel::Info, "Info: "},
+    {TraceLevel::Debug, "Debug: "}
   };
 
   /// ability to trace

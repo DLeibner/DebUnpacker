@@ -1,9 +1,8 @@
 #include "pch.h"
 #include "ZLibDecompressor.h"
-#include <algorithm>
 #include <fstream>
 
-ZLibDecompressor::ZLibDecompressor()
+ZLibDecompressor::ZLibDecompressor(): in{}, out{}
 {
   /* allocate inflate state */
   strm.zalloc = nullptr;
@@ -11,7 +10,7 @@ ZLibDecompressor::ZLibDecompressor()
   strm.opaque = nullptr;
   strm.avail_in = 0;
   strm.next_in = nullptr;
-  auto ret = inflateInit2(&strm, 16 + MAX_WBITS);
+  const auto ret = inflateInit2(&strm, 16 + MAX_WBITS);
   if (ret != Z_OK)
     throw std::bad_alloc();
 }
@@ -21,9 +20,9 @@ ZLibDecompressor::~ZLibDecompressor()
   inflateEnd(&strm);
 }
 
-std::optional<std::string> ZLibDecompressor::decompress(std::ifstream& input, int from, int to, std::ofstream& output)
+std::optional<std::string> ZLibDecompressor::decompress(std::ifstream& input, int from, const int to, std::ofstream& output)
 {
-  int ret = 0;
+  int ret;
 
   do
   {
@@ -33,7 +32,7 @@ std::optional<std::string> ZLibDecompressor::decompress(std::ifstream& input, in
       return "File size 0";
     }
 
-    auto size = to - from > CHUNK ? CHUNK : to - from;
+    const auto size = to - from > chunk ? chunk : to - from;
     from += size;
 
     input.read(in, size);
@@ -43,7 +42,7 @@ std::optional<std::string> ZLibDecompressor::decompress(std::ifstream& input, in
 
     do
     {
-      strm.avail_out = CHUNK;
+      strm.avail_out = chunk;
       strm.next_out = reinterpret_cast<unsigned char*>(out);
 
       ret = inflate(&strm, Z_NO_FLUSH);
@@ -63,9 +62,10 @@ std::optional<std::string> ZLibDecompressor::decompress(std::ifstream& input, in
       case Z_MEM_ERROR:
         inflateEnd(&strm);
         return "Z_MEM_ERROR (-4)";
+      default: ;
       }
 
-      auto have = CHUNK - strm.avail_out;
+      const auto have = chunk - strm.avail_out;
       output.write(out, have);
     } while (strm.avail_out == 0);
   } while (ret != Z_STREAM_END);
@@ -78,7 +78,7 @@ void ZLibDecompressor::extractWithoutInflate(std::ifstream& input, int from, int
 {
   while (from != to)
   {
-    auto size = to - from > CHUNK ? CHUNK : to - from;
+    const auto size = to - from > chunk ? chunk : to - from;
     from += size;
 
     input.read(in, size);

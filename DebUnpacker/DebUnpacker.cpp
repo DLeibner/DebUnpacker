@@ -46,7 +46,7 @@ bool DebUnpacker::run(const std::string& inputFilePath, const std::string& outpu
   return true;
 }
 
-bool DebUnpacker::checkSection(std::ifstream& input, unsigned int& fileSize, bool& inflate, const std::vector<std::string>& identifier, const std::string& sectionName)
+bool DebUnpacker::checkSection(std::ifstream& input, unsigned int& fileSize, bool& inflate, const std::vector<std::string>& identifier, const std::string& sectionName) const
 {
   std::vector<char> section(sectionLength, 0);
   input.read(&section[0], sectionLength);
@@ -63,8 +63,8 @@ bool DebUnpacker::checkSection(std::ifstream& input, unsigned int& fileSize, boo
 
 bool DebUnpacker::extractFile(std::ifstream& input, unsigned int size, bool inflate, std::ofstream& output)
 {
-  int from = static_cast<int>(input.tellg());
-  int to = from + size;
+  const int from = static_cast<int>(input.tellg());
+  const int to = from + size;
 
   if (!inflate)
   {
@@ -82,7 +82,7 @@ bool DebUnpacker::extractFile(std::ifstream& input, unsigned int size, bool infl
 }
 
 std::tuple<bool, unsigned int, bool> DebUnpacker::checkCommonBytes(
-  const std::vector<char>& section, const std::vector<std::string>& identifier)
+  const std::vector<char>& section, const std::vector<std::string>& identifier) const
 {
   unsigned int size = 0;
   bool inflate = false;
@@ -105,7 +105,7 @@ std::tuple<bool, unsigned int, bool> DebUnpacker::checkCommonBytes(
   if (!identOk)
     return std::make_tuple(false, size, inflate);
 
-  auto isDigitOrEmpty = [](unsigned char x) { return std::isdigit(x) || x == ' '; };
+  const auto isDigitOrEmpty = [](unsigned char x) { return std::isdigit(x) || x == ' '; };
 
   // file modification timestamp
   if (!std::all_of(section.cbegin() + 16, section.cbegin() + 28, isDigitOrEmpty))
@@ -128,14 +128,14 @@ std::tuple<bool, unsigned int, bool> DebUnpacker::checkCommonBytes(
     [](int a, unsigned char b) { return std::isdigit(b) ? a * 10 + b - 48 : a; });
 
   // end char
-  std::string end = "`\n";
+  const std::string end = "`\n";
   if (!std::equal(section.cbegin() + 58, section.cbegin() + 60, std::cbegin(end)))
     return std::make_tuple(false, size, inflate);
 
   return std::make_tuple(true, size, inflate);
 }
 
-bool DebUnpacker::checkArchiveFileSignature(std::ifstream& input)
+bool DebUnpacker::checkArchiveFileSignature(std::ifstream& input) const
 {
   bool ok = true;
   std::stringstream ss;
@@ -144,7 +144,7 @@ bool DebUnpacker::checkArchiveFileSignature(std::ifstream& input)
   input.read(&archiveSignature[0], archiveSignatureLength);
 
   ss << "Archive file Signature check -> ";
-  std::string archive = "!<arch>\n";
+  const std::string archive = "!<arch>\n";
   if (!std::equal(archiveSignature.cbegin(), archiveSignature.cbegin() + 8, std::cbegin(archive)))
     ok = false;
 
@@ -152,7 +152,7 @@ bool DebUnpacker::checkArchiveFileSignature(std::ifstream& input)
   return ok;
 }
 
-void DebUnpacker::logStatus(bool ok, std::stringstream& ss)
+void DebUnpacker::logStatus(bool ok, std::stringstream& ss) const
 {
   if (ok)
   {
