@@ -35,7 +35,9 @@ bool DebUnpacker::run(const std::string& inputFilePath, const std::string& outpu
   if (!extractFile(input, controlFileSize, controlFileInflate, outputFolderPath + "\\ControlFile"))
     return false;
 
-  const std::vector<std::string> dataIdentifier{ "data.tar.gz     ", "data.tgz        ", "data.tar.bz2    ", "data.tar.7z     ", "data.tar.xz     " };
+  const std::vector<std::string> dataIdentifier{
+    "data.tar.gz     ", "data.tgz        ", "data.tar.bz2    ", "data.tar.7z     ", "data.tar.xz     "
+  };
   if (!checkSection(input, dataFileSize, dataFileInflate, dataIdentifier, "Data"))
     return false;
 
@@ -45,7 +47,8 @@ bool DebUnpacker::run(const std::string& inputFilePath, const std::string& outpu
   return true;
 }
 
-bool DebUnpacker::checkSection(std::ifstream& input, unsigned int& fileSize, bool& inflate, const std::vector<std::string>& identifier, const std::string& sectionName) const
+bool DebUnpacker::checkSection(std::ifstream& input, unsigned int& fileSize, bool& inflate,
+  const std::vector<std::string>& identifier, const std::string& sectionName) const
 {
   std::vector<char> section(sectionLength, 0);
   input.read(&section[0], sectionLength);
@@ -64,7 +67,7 @@ bool DebUnpacker::checkSection(std::ifstream& input, unsigned int& fileSize, boo
 
 bool DebUnpacker::extractFile(std::ifstream& input, unsigned int size, bool inflate, const std::string& outputPath)
 {
-  const int from = static_cast<int>(input.tellg());
+  const auto from = static_cast<int>(input.tellg());
   const int to = from + size;
 
   if (!inflate)
@@ -86,10 +89,10 @@ std::tuple<std::string, unsigned int, bool> DebUnpacker::checkCommonBytes(
   const std::vector<char>& section, const std::vector<std::string>& identifier) const
 {
   unsigned int size = 0;
-  bool inflate = false;
+  auto inflate = false;
 
   // file identifier
-  bool identOk = false;
+  auto identOk = false;
   for (auto&& i: identifier)
   {
     if (std::equal(section.cbegin(), section.cbegin() + 16, std::cbegin(i)))
@@ -138,7 +141,7 @@ std::tuple<std::string, unsigned int, bool> DebUnpacker::checkCommonBytes(
 
 bool DebUnpacker::checkArchiveFileSignature(std::ifstream& input) const
 {
-  bool ok = true;
+  auto ok = true;
   std::stringstream ss;
   const short archiveSignatureLength = 8;
   std::vector<char> archiveSignature(archiveSignatureLength, 0);
