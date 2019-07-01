@@ -2,17 +2,8 @@
 #include "ZLibDecompressor.h"
 #include <fstream>
 
-ZLibDecompressor::ZLibDecompressor(): in{}, out{}
+ZLibDecompressor::ZLibDecompressor(): in{}, out{}, strm()
 {
-  /* allocate inflate state */
-  strm.zalloc = nullptr;
-  strm.zfree = nullptr;
-  strm.opaque = nullptr;
-  strm.avail_in = 0;
-  strm.next_in = nullptr;
-  const auto ret = inflateInit2(&strm, 16 + MAX_WBITS);
-  if (ret != Z_OK)
-    throw std::bad_alloc();
 }
 
 ZLibDecompressor::~ZLibDecompressor()
@@ -22,13 +13,22 @@ ZLibDecompressor::~ZLibDecompressor()
 
 std::optional<std::string> ZLibDecompressor::decompress(std::ifstream& input, int from, const int to, const std::string& outputPath)
 {
-  int ret;
   std::ofstream output(outputPath, std::ios::out | std::ios::binary | std::ios::trunc);
 
   if (!output)
   {
     return "Failed to open file on path " + outputPath;
   }
+
+  /* allocate inflate state */
+  strm.zalloc = nullptr;
+  strm.zfree = nullptr;
+  strm.opaque = nullptr;
+  strm.avail_in = 0;
+  strm.next_in = nullptr;
+  auto ret = inflateInit2(&strm, 16 + MAX_WBITS);
+  if (ret != Z_OK)
+    return "Inflate initialization failed";
 
   do
   {
