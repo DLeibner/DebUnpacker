@@ -46,6 +46,8 @@ std::optional<std::string> ZLibDecompressor::decompress(std::ifstream& input, in
     strm.avail_in = size;
     strm.next_in = reinterpret_cast<unsigned char*>(in);
 
+    auto sum = 0;
+
     do
     {
       strm.avail_out = chunk;
@@ -72,6 +74,13 @@ std::optional<std::string> ZLibDecompressor::decompress(std::ifstream& input, in
       }
 
       const auto have = chunk - strm.avail_out;
+      sum += have;
+      // length check for possible memory bomb
+      if (sum - size > 1e+9)
+      {
+        inflateEnd(&strm);
+        return "Decompressed file is a lot larger than compressed - Most likely memory bomb!";
+      }
       output.write(out, have);
     } while (strm.avail_out == 0);
   } while (ret != Z_STREAM_END);

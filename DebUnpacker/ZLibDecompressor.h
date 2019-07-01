@@ -13,7 +13,7 @@ public:
   std::optional<std::string> extractWithoutInflate(std::ifstream& input, int from, int to, const std::string& outputPath);
 
 protected:
-  static constexpr size_t chunk = 262144;
+  static constexpr unsigned int chunk = 262144;
 
 private:
   char in[chunk];
