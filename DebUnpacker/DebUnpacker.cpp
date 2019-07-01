@@ -21,21 +21,21 @@ bool DebUnpacker::run(const std::string& inputFilePath, const std::string& outpu
   if (!checkArchiveFileSignature(input))
     return false;
 
-  std::vector<std::string> packageIdentifier{ "debian-binary   " };
+  const std::vector<std::string> packageIdentifier{ "debian-binary   " };
   if (!checkSection(input, packageFileSize, packageFileInflate, packageIdentifier, "Package"))
     return false;
 
   if (!extractFile(input, packageFileSize, packageFileInflate, outputFolderPath + "\\PackageFile"))
     return false;
 
-  std::vector<std::string> controlIdentifier{ "control.tar.gz  ", "control.tgz     ", "control.tar.xz  " };
+  const std::vector<std::string> controlIdentifier{ "control.tar.gz  ", "control.tgz     ", "control.tar.xz  " };
   if (!checkSection(input, controlFileSize, controlFileInflate, controlIdentifier, "Control"))
     return false;
 
   if (!extractFile(input, controlFileSize, controlFileInflate, outputFolderPath + "\\ControlFile"))
     return false;
 
-  std::vector<std::string> dataIdentifier{ "data.tar.gz     ", "data.tgz        ", "data.tar.bz2    ", "data.tar.7z     ", "data.tar.xz     " };
+  const std::vector<std::string> dataIdentifier{ "data.tar.gz     ", "data.tgz        ", "data.tar.bz2    ", "data.tar.7z     ", "data.tar.xz     " };
   if (!checkSection(input, dataFileSize, dataFileInflate, dataIdentifier, "Data"))
     return false;
 
@@ -53,9 +53,11 @@ bool DebUnpacker::checkSection(std::ifstream& input, unsigned int& fileSize, boo
   std::stringstream ss;
   ss << "Check " << sectionName << " section -> ";
 
-  bool ok;
-  std::tie(ok, fileSize, inflate) = checkCommonBytes(section, identifier);
-  logStatus(ok, ss);
+  std::string error;
+  std::tie(error, fileSize, inflate) = checkCommonBytes(section, identifier);
+
+  const auto ok = error.empty();
+  logStatus(ok, ss, error);
 
   return ok;
 }
@@ -80,7 +82,7 @@ bool DebUnpacker::extractFile(std::ifstream& input, unsigned int size, bool infl
   return true;
 }
 
-std::tuple<bool, unsigned int, bool> DebUnpacker::checkCommonBytes(
+std::tuple<std::string, unsigned int, bool> DebUnpacker::checkCommonBytes(
   const std::vector<char>& section, const std::vector<std::string>& identifier) const
 {
   unsigned int size = 0;
@@ -102,25 +104,25 @@ std::tuple<bool, unsigned int, bool> DebUnpacker::checkCommonBytes(
   }
 
   if (!identOk)
-    return std::make_tuple(false, size, inflate);
+    return std::make_tuple("Inconsistency in file identifier", size, inflate);
 
   const auto isDigitOrEmpty = [](unsigned char x) { return std::isdigit(x) || x == ' '; };
 
   // file modification timestamp
   if (!std::all_of(section.cbegin() + 16, section.cbegin() + 28, isDigitOrEmpty))
-    return std::make_tuple(false, size, inflate);
+    return std::make_tuple("Inconsistency in file modification timestamp", size, inflate);
 
   // owner ID
   if (!std::all_of(section.cbegin() + 28, section.cbegin() + 34, isDigitOrEmpty))
-    return std::make_tuple(false, size, inflate);
+    return std::make_tuple("Inconsistency in owner ID", size, inflate);
 
   // group ID
   if (!std::all_of(section.cbegin() + 34, section.cbegin() + 40, isDigitOrEmpty))
-    return std::make_tuple(false, size, inflate);
+    return std::make_tuple("Inconsistency in group ID", size, inflate);
 
   // file mode
   if (!std::all_of(section.cbegin() + 40, section.cbegin() + 48, isDigitOrEmpty))
-    return std::make_tuple(false, size, inflate);
+    return std::make_tuple("Inconsistency in file mode", size, inflate);
 
   // file size in bytes (decimal)
   size = std::accumulate(section.cbegin() + 48, section.cbegin() + 58, 0,
@@ -129,9 +131,9 @@ std::tuple<bool, unsigned int, bool> DebUnpacker::checkCommonBytes(
   // end char
   const std::string end = "`\n";
   if (!std::equal(section.cbegin() + 58, section.cbegin() + 60, std::cbegin(end)))
-    return std::make_tuple(false, size, inflate);
+    return std::make_tuple("Inconsistency in end char", size, inflate);
 
-  return std::make_tuple(true, size, inflate);
+  return std::make_tuple("", size, inflate);
 }
 
 bool DebUnpacker::checkArchiveFileSignature(std::ifstream& input) const
@@ -151,7 +153,7 @@ bool DebUnpacker::checkArchiveFileSignature(std::ifstream& input) const
   return ok;
 }
 
-void DebUnpacker::logStatus(bool ok, std::stringstream& ss) const
+void DebUnpacker::logStatus(bool ok, std::stringstream& ss, const std::string& error) const
 {
   if (ok)
   {
@@ -160,7 +162,7 @@ void DebUnpacker::logStatus(bool ok, std::stringstream& ss) const
   }
   else
   {
-    ss << "FAILED!";
+    ss << "FAILED! " << error;
     env.Trace(Environment::TraceLevel::Error, ss);
   }
 }

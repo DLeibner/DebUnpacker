@@ -23,11 +23,11 @@ private:
   bool dataFileInflate;
   const short sectionLength = 60;
 
-  std::tuple<bool, unsigned int, bool> checkCommonBytes(const std::vector<char>& section, const std::vector<std::string>& identifier) const;
+  std::tuple<std::string, unsigned int, bool> checkCommonBytes(const std::vector<char>& section, const std::vector<std::string>& identifier) const;
   bool checkArchiveFileSignature(std::ifstream& input) const;
   bool checkSection(std::ifstream& input, unsigned int& fileSize, bool& inflate, const std::vector<std::string>& identifier, const std::string& sectionName) const;
   bool extractFile(std::ifstream& input, unsigned int size, bool inflate, const std::string& outputPath);
 
-  void logStatus(bool ok, std::stringstream& ss) const;
+  void logStatus(bool ok, std::stringstream& ss, const std::string& error = "") const;
 };
 
